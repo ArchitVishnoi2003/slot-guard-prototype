@@ -75,10 +75,12 @@ p{margin:0}
 /* ---------- landing ---------- */
 .nav{display:flex;align-items:center;justify-content:space-between;max-width:1160px;margin:0 auto;padding:18px 24px;gap:12px}
 .nav-links{display:flex;gap:28px;color:var(--ink-2);font-weight:500}
-.hero{max-width:1160px;margin:0 auto;padding:44px 24px 24px;display:grid;grid-template-columns:1.05fr 1fr;gap:56px;align-items:center}
+.hero{max-width:1160px;margin:0 auto;padding:36px 24px 16px;display:grid;grid-template-columns:1.05fr 1fr;gap:56px;align-items:center}
+.lead .tagline{display:block;color:var(--accent);font-weight:600;margin-bottom:6px}
+#how{padding-top:20px}
 .problem{display:inline-flex;align-items:center;gap:8px;padding:5px 12px 5px 6px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:13px;color:var(--ink-2)}
 .problem b{background:var(--red-bg);color:var(--red);padding:2px 9px;border-radius:999px;font-size:12px}
-.hero h1{font-size:54px;line-height:1.04;letter-spacing:-.035em;margin:16px 0 18px}
+.hero h1{font-size:52px;line-height:1.04;letter-spacing:-.035em;margin:0 0 18px}
 .hero h1 em{font-style:normal;color:var(--accent)}
 .hero .lead{font-size:18px;color:var(--ink-2);max-width:480px;margin-bottom:28px}
 .hero-ctas{display:flex;gap:12px;flex-wrap:wrap}
@@ -627,13 +629,12 @@ function landing(){
   return `
   <nav class="nav">${logo()}
     <div class="nav-links"><a href="#how" data-a="scrollhow">How it works</a></div>
-    <div class="row"><a class="btn btn-ghost btn-sm" href="#/dashboard">Log in</a><a class="btn btn-primary btn-sm" href="#/job">Get started</a></div>
+    <a class="btn btn-primary btn-sm" href="#/job">Get started</a>
   </nav>
   <section class="hero">
     <div>
-      <span class="problem"><b>Only 4 in 10</b>booked candidates actually show up</span>
-      <h1>Every interview slot, <em>filled wisely.</em></h1>
-      <p class="lead">Slotwise screens applicants, confirms every interview, and fills cancelled slots from your waiting list. You just show up and interview.</p>
+      <h1>No more empty interview slots.</h1>
+      <p class="lead"><b class="tagline">Every interview slot, filled wisely.</b> We screen applicants, confirm every interview, and fill cancelled slots for you. Built for busy store managers.</p>
       <div class="hero-ctas"><a class="btn btn-primary" href="#/job">Post your first job ${ic('arrow')}</a><a class="btn btn-ghost" href="#/dashboard">See the dashboard</a></div>
     </div>
     <div>

@@ -282,7 +282,19 @@ footer.foot{max-width:1160px;margin:0 auto;padding:32px 24px 40px;color:var(--mu
 .c-atrisk,.c-calling{background:var(--amber-bg);color:var(--amber)}
 .c-booked{background:var(--surface);border-color:var(--line-2);color:var(--ink-2)}
 .c-offer{background:var(--violet-bg);color:var(--violet)}
-.c-freed{background:repeating-linear-gradient(45deg,#F4F4F2,#F4F4F2 6px,#FAFAF9 6px,#FAFAF9 12px);color:var(--muted);border-color:var(--line)}
+.c-freed,.c-hcancel{background:repeating-linear-gradient(45deg,#F4F4F2,#F4F4F2 6px,#FAFAF9 6px,#FAFAF9 12px);color:var(--muted);border-color:var(--line)}
+.c-open{background:var(--accent-2);color:var(--accent-ink)}
+.c-notopen{background:transparent;border:1px dashed var(--line-2);color:#9A9EA7}
+.wc{font-family:inherit;font-size:12px;text-align:left;align-items:stretch;cursor:pointer;width:100%}
+.wc b,.wc span{display:block;max-width:100%}
+.wc:hover{filter:brightness(.97)}
+.wc.sel{outline:2px solid var(--accent);outline-offset:1px}
+.wnav{display:flex;align-items:center;gap:2px}
+.wi{width:100%;font-family:inherit;font-size:13px;text-align:left;cursor:pointer;padding:4px 6px;border-radius:8px}
+.wi.sel{background:var(--accent-2)}
+.selbar{margin-top:14px;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--bg);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.p-blue{background:var(--accent-2);color:var(--accent-ink)}
+.avatar.ghost{background:var(--grey-bg);color:var(--muted)}
 .wc.today{outline:2px solid var(--accent-2);outline-offset:1px}
 .wlist{display:none}
 .wday{display:flex;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
@@ -393,6 +405,7 @@ const I = {
   arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>',
   back:'<path d="M19 12H5M11 18l-6-6 6-6"/>',
   right:'<path d="m9 18 6-6-6-6"/>',
+  left:'<path d="m15 18-6-6 6-6"/>',
   spark:'<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>',
   upload:'<path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/>',
   file:'<path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5"/>',
@@ -508,34 +521,58 @@ function analyzeJD(text, title, location){
 }
 
 /* ================= dashboard data ================= */
+// Demo clock: Wednesday, Nov 11 2026 at 9:00 AM. Booking is only allowed 48 hours ahead.
+const TODAY = new Date(2026, 10, 11);
+const NOW = new Date(2026, 10, 11, 9, 0);
+const HOUR = 3600e3, WINDOW = 48 * HOUR;
+const WEEK0 = new Date(2026, 10, 9); // Monday of the demo week
 const PEOPLE = {
   alex:{n:'Alex Rivera',i:'AR'}, jordan:{n:'Jordan Lee',i:'JL'}, priya:{n:'Priya Shah',i:'PS',pref:'Afternoons · Cashier'},
   marcus:{n:'Marcus Johnson',i:'MJ',pref:'Evenings · Drive-thru'}, elena:{n:'Elena Torres',i:'ET',pref:'Mornings · Kitchen'},
   sam:{n:'Sam Carter',i:'SC',pref:'Weekends · Any job'}, dana:{n:'Dana Kim',i:'DK'}, leo:{n:'Leo Martins',i:'LM'},
-  maya:{n:'Maya Brooks',i:'MB'}, tyler:{n:'Tyler Ross',i:'TR'}, chris:{n:'Chris Nguyen',i:'CN'}, nina:{n:'Nina Patel',i:'NP'},
-  owen:{n:'Owen Hall',i:'OH'}, ava:{n:'Ava Wright',i:'AW'},
+  maya:{n:'Maya Brooks',i:'MB'}, tyler:{n:'Tyler Ross',i:'TR'}, chris:{n:'Chris Nguyen',i:'CN'},
+  kai:{n:'Kai Brooks',i:'KB',pref:'Weekends · Crew'}, mia:{n:'Mia Lopez',i:'ML',pref:'Afternoons · Cashier'},
 };
+['Noah Bell','Zoe Grant','Liam Ortiz','Ella Price','Ryan Cole','Ivy Chen','Omar Haddad','Lucy Ward','Ben Alvarez','Ada Kim','Theo Park','Nora Diaz']
+  .forEach((n, i) => PEOPLE['g' + i] = { n, i: n.split(' ').map(w => w[0]).join('') });
+const POOL = 12;
 const STATUS = {
-  confirmed:['Confirmed','p-green'], atrisk:['Waiting for reply','p-amber'], calling:['Calling now','p-amber pulse'],
-  released:['Cancelled','p-red'], offer:['Finding a replacement','p-violet pulse'], booked:['Booked','p-grey'],
-  attended:['Came','p-grey'], noshow:["Didn't come",'p-red'], freed:['Free time','p-grey'], tomark:['Not marked','p-grey'],
+  confirmed:['Confirmed','p-green'], booked:['Booked','p-grey'], atrisk:['Waiting for reply','p-amber'],
+  calling:['Calling now','p-amber pulse'], released:['Cancelled','p-red'], offer:['Offer sent','p-violet pulse'],
+  hcancel:['Cancelled by you','p-grey'], freed:['Free time','p-grey'], open:['Open','p-blue'], notopen:['Not open yet','p-grey'],
+  attended:['Came','p-grey'], noshow:["Didn't come",'p-red'], tomark:['Not marked','p-amber'],
 };
+const ACTIVE = ['confirmed','booked','atrisk'];
+const at = (d, t) => { const m = toMin(t); return new Date(d.getFullYear(), d.getMonth(), d.getDate(), Math.floor(m / 60), m % 60); };
+const hash = s => { let h = 7; for (const c of s) h = (h * 31 + c.charCodeAt(0)) | 0; return Math.abs(h); };
+const first = c => PEOPLE[c].n.split(' ')[0];
+const rowId = k => 'r-' + k.replace(/[^a-z0-9]/gi, '-');
 let D;
 function resetDash(){
-  D = {
-    today: [
-      { id:'t1', time:'2:00 PM', c:'alex',   st:'confirmed', note:'Replied yes to the reminder' },
-      { id:'t2', time:'2:30 PM', c:'jordan', st:'atrisk',    note:"Hasn't replied yet. We'll call to check." },
-    ],
-    week: {
-      Mon:[{c:'dana',st:'attended'},{c:'leo',st:'attended',refilled:true}],
-      Tue:[{c:'maya',st:'tomark'},{c:'tyler',st:'tomark'}],
-      Thu:[{c:'chris',st:'confirmed'},{c:'nina',st:'confirmed'}],
-      Fri:[{c:'owen',st:'booked'},{c:'ava',st:'booked'}],
-    },
-    wait: ['priya','marcus','elena','sam'],
-    running: false, sim1: false, sim2: false,
-  };
+  D = { slots:{}, wait:['priya','marcus','elena','sam'], firstPick:[], marked:new Set(),
+        review:[{ c:'kai', why:'Can only work weekends', st:null }, { c:'mia', why:'Can start in 3 weeks', st:null }],
+        wk:0, sel:null, confirm:null, running:false, sim1:false, sim2:false };
+  delete PEOPLE.jordan.pref;
+  const seed = (n, t, o) => { const d = new Date(2026, 10, n), k = key(d) + '|' + t; D.slots[k] = Object.assign({ k, d, t }, o); };
+  seed(9,  '2:00 PM', { c:'dana',  st:'attended' });
+  seed(9,  '2:30 PM', { c:'leo',   st:'attended', refilled:true });
+  seed(10, '2:00 PM', { c:'maya',  st:'tomark' });
+  seed(10, '2:30 PM', { c:'tyler', st:'tomark' });
+  seed(11, '2:00 PM', { c:'alex',  st:'confirmed', note:'Replied yes to the reminder' });
+  seed(11, '2:30 PM', { c:'jordan',st:'atrisk', note:"Hasn't replied to the reminder. We'll call to check." });
+  seed(12, '2:00 PM', { c:'chris', st:'confirmed', note:'Replied yes to the reminder' });
+  seed(12, '2:30 PM', { st:'open' });
+}
+// Every slot is created on first look, so the schedule works for any week and any interview times.
+function getSlot(d, t){
+  const k = key(d) + '|' + t;
+  if (D.slots[k]) return D.slots[k];
+  const when = at(d, t), h = hash(k), c = 'g' + (h % POOL);
+  let s;
+  if (when < NOW) s = h % 13 === 0 ? { c, st:'noshow' } : h % 11 === 0 ? { c, st:'attended', refilled:true } : { c, st:'attended' };
+  else if (when - NOW <= WINDOW) s = h % 2 ? { st:'open' } : { c, st:'booked', note:'Reminder goes out the day before' };
+  else s = { st:'notopen' };
+  return (D.slots[k] = Object.assign({ k, d, t }, s));
 }
 resetDash();
 
@@ -569,8 +606,8 @@ function renderBar(){
   }
   n.classList.remove('on');
   if (r === 'dashboard') {
-    b.innerHTML = `<span class="tagp">Prototype</span><span class="msg"><span class="long">Play what Slotwise does on its own:</span></span>
-      <button class="pri" data-a="sim1" ${D.sim1 ? 'disabled title="Already played. Press Reset to play again."' : ''}>${ic('play')}<span class="long">Someone cancels</span><span class="short">Cancel</span></button>
+    b.innerHTML = `<span class="tagp">Prototype</span><span class="msg"><span class="long">A candidate cancels today. Play what happens:</span></span>
+      <button class="pri" data-a="sim1" ${D.sim1 ? 'disabled title="Already played. Press Reset to play again."' : ''}>${ic('play')}<span class="long">Someone else takes the slot</span><span class="short">Refilled</span></button>
       <button data-a="sim2" ${D.sim2 ? 'disabled title="Already played. Press Reset to play again."' : ''}>${ic('play')}<span class="long">No one can take it</span><span class="short">No match</span></button>
       <button data-a="reset" aria-label="Reset demo">${ic('refresh')}<span class="long">Reset</span></button>`;
   } else {
@@ -586,12 +623,13 @@ function toast(msg){
   const t = $('toast'); t.innerHTML = ic('check') + `<span>${esc(msg)}</span>`; t.classList.add('on');
   clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('on'), 2800);
 }
-function slotRow(s, extra = ''){
-  const p = PEOPLE[s.c], [lab, cls] = STATUS[s.st];
+function slotRow(s, extra){
+  const p = s.c ? PEOPLE[s.c] : null, [lab, cls] = STATUS[s.st];
+  const name = p ? p.n : s.st === 'freed' ? 'Free time' : 'Open slot';
   return `<div class="slot" id="${s.id || ''}">
-    <div class="t">${s.time}<small>30 min</small></div>
-    <div class="who"><span class="avatar">${p.i}</span><div style="min-width:0"><b>${p.n}</b>${s.note ? `<span class="note">${esc(s.note)}</span>` : ''}</div></div>
-    <div class="st">${extra || `<span class="pill ${cls}">${lab}</span>`}</div></div>`;
+    <div class="t">${s.timeLabel || s.time || s.t}<small>${s.sub || S.av.slotLen + ' min'}</small></div>
+    <div class="who">${p ? `<span class="avatar">${p.i}</span>` : `<span class="avatar ghost">${ic('cal')}</span>`}<div style="min-width:0"><b>${name}</b>${s.note ? `<span class="note">${esc(s.note)}</span>` : ''}</div></div>
+    <div class="st">${extra === undefined ? `<span class="pill ${cls}">${lab}</span>` : extra}</div></div>`;
 }
 function setupTop(step){
   const names = ['Choose the job','Check questions','Interview times'];
@@ -621,8 +659,8 @@ function shell(active, content){
 const HERO_STEPS = [
   { c:'jordan', st:'atrisk',    note:"Hasn't replied yet. We'll call to check.", cap:'Jordan hasn\'t confirmed yet…' },
   { c:'jordan', st:'calling',   note:'Calling to check if they\'re coming',       cap:'Slotwise calls to check.' },
-  { c:'jordan', st:'released',  note:"Can't come today. Moved to next week.",     cap:'Jordan can\'t make it.' },
-  { c:'priya',  st:'offer',     note:'Offered to the best fit on the waiting list', cap:'The best waiting candidate gets a text.' },
+  { c:'jordan', st:'released',  note:"Can't come today. Offering the slot to the waiting list…", cap:'Jordan can\'t make it.' },
+  { c:'priya',  st:'offer',     note:'Waiting for Priya to accept (30 minutes)', cap:'The next person in line gets a text.' },
   { c:'priya',  st:'confirmed', note:'Took the slot from the waiting list',        cap:'Slot filled. Maria didn\'t lift a finger.' },
 ];
 function landing(){
@@ -770,11 +808,20 @@ const toMin = t => { const [hm, ap] = t.split(' '); let [h, m] = hm.split(':').m
 const toLabel = m => { const h = Math.floor(m / 60), mm = m % 60, ap = h >= 12 ? 'PM' : 'AM', hh = ((h + 11) % 12) + 1; return `${hh}:${String(mm).padStart(2, '0')} ${ap}`; };
 const HOURS = Array.from({ length: 31 }, (_, i) => toLabel(7 * 60 + i * 30));
 const DOW = [['Mon',1],['Tue',2],['Wed',3],['Thu',4],['Fri',5],['Sat',6],['Sun',0]];
-const BOOKED = { '2026-11-12': new Set(['2:00 PM']) };
 const fmtShort = d => d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
 const fmtLong = d => d.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
 function daySlots(){ const a = S.av, out = []; for (let m = toMin(a.from); m + a.slotLen <= toMin(a.to); m += a.slotLen) out.push(toLabel(m)); return out; }
-function bookableDays(){ const out = []; for (let n = 1; n <= 2; n++) { const d = new Date(2026, 10, 11 + n); if (S.av.days.has(d.getDay())) out.push(d); } return out; }
+// Times a candidate can book right now: only within the next 48 hours.
+function bookableDays(){
+  const out = [];
+  for (let n = 0; n <= 2; n++) {
+    const d = new Date(2026, 10, 11 + n); if (!S.av.days.has(d.getDay())) continue;
+    const ts = daySlots().filter(t => { const w = at(d, t); return w > NOW && w - NOW <= WINDOW; });
+    if (ts.length) out.push([d, ts]);
+  }
+  return out;
+}
+const dayName = d => key(d) === key(TODAY) ? 'Today' : key(d) === key(new Date(2026, 10, 12)) ? 'Tomorrow' : wd(d);
 
 function avForm(){
   const a = S.av, slots = daySlots(), perWeek = slots.length * a.days.size;
@@ -804,14 +851,17 @@ function candidatePreview(){
     body = `<div class="ok"><span class="tk">${ic('check')}</span><b style="font-size:16px">You're booked!</b><div class="muted">${fmtLong(fromKey(k))} at ${t}</div>
       <button class="btn btn-ghost btn-sm" style="margin-top:8px" data-a="crestart">Pick another time</button></div>`;
   } else if (!days.length || !slots.length) {
-    body = `<p class="muted" style="padding-top:18px">No open times in the next 2 days. Go back and add more days or hours.</p>`;
+    body = `<p class="muted" style="padding-top:18px">No open times in the next 48 hours. Go back and add more days or hours.</p>`;
   } else {
-    body = days.map(d => { const k = key(d); return `<div class="cday"><b>${fmtShort(d)}</b><div class="slot-grid">${slots.map(t => {
-        const b = BOOKED[k] && BOOKED[k].has(t), id = k + '|' + t;
-        return `<button class="time ${b ? 'booked' : a.cSel === id ? 'on' : ''}" ${b ? 'disabled aria-label="' + t + ' taken"' : `data-a="ctime" data-t="${id}"`}>${t}</button>`; }).join('')}</div></div>`; }).join('')
+    const anyOpen = days.some(([d, ts]) => ts.some(t => getSlot(d, t).st === 'open'));
+    body = days.map(([d, ts]) => `<div class="cday"><b>${dayName(d)}</b> <span class="muted" style="font-size:13px">${md(d)}</span><div class="slot-grid">${ts.map(t => {
+        const taken = getSlot(d, t).st !== 'open', id = key(d) + '|' + t;
+        return `<button class="time ${taken ? 'booked' : a.cSel === id ? 'on' : ''}" ${taken ? 'disabled aria-label="' + t + ' taken"' : `data-a="ctime" data-t="${id}"`}>${t}</button>`; }).join('')}</div></div>`).join('')
+      + (anyOpen ? '' : '<p class="muted" style="font-size:13px;margin-top:12px">Every time in the next 48 hours is taken, so new applicants join the waiting list.</p>')
       + `<button class="btn btn-primary" style="width:100%;margin-top:18px" data-a="cbook" ${a.cSel ? '' : 'disabled'}>Book interview</button>`;
   }
-  const [bk, bt] = (a.cBooked && a.cSel ? a.cSel : key(new Date(2026, 10, 12)) + '|2:30 PM').split('|');
+  const firstOpen = (() => { for (const [d, ts] of days) for (const t of ts) if (getSlot(d, t).st === 'open') return key(d) + '|' + t; return key(new Date(2026, 10, 12)) + '|2:30 PM'; })();
+  const [bk, bt] = (a.cSel || firstOpen).split('|');
   const day = fromKey(bk).toLocaleDateString('en-US', { weekday:'long' });
   return `<div class="cp">
     <div class="card cp-card">
@@ -836,7 +886,7 @@ function availability(){
   const isC = S.av.tab === 'candidate';
   return `${setupTop(3)}<div class="wrapc" style="max-width:${isC ? 900 : 680}px">
     <div class="row between wrap" style="align-items:flex-end;gap:12px;margin-bottom:22px">
-      <div class="head"><h1>${isC ? 'What candidates see' : 'When can you interview?'}</h1><p style="margin:0">${isC ? 'Only the next 2 days are offered, so people come while they\'re still interested.' : 'Set it once. We repeat it every week.'}</p></div>
+      <div class="head"><h1>${isC ? 'What candidates see' : 'When can you interview?'}</h1><p style="margin:0">${isC ? 'Candidates can only book times in the next 48 hours, so they come while they\'re still interested.' : 'Set it once. We repeat it every week.'}</p></div>
       ${isC ? `<button class="btn btn-ghost btn-sm" data-a="avtab" data-v="hirer">${ic('back')} My times</button>` : ''}
     </div>
     ${isC ? candidatePreview() : avForm() + `<div style="margin-top:10px"><button class="link" style="font-size:13px" data-a="avtab" data-v="candidate">Preview what candidates see →</button></div>`}
@@ -881,71 +931,162 @@ function live(){
 }
 
 /* ================= 6. DASHBOARD ================= */
+const todaySlots = () => S.av.days.has(TODAY.getDay()) ? daySlots().map(t => getSlot(TODAY, t)) : [];
 function statusLine(){
-  const pending = D.today.filter(s => ['atrisk','calling','released','offer'].includes(s.st)).length;
+  const today = todaySlots().filter(s => at(s.d, s.t) > NOW);
+  if (!today.length) return `<span class="pill p-grey">No interviews today</span>`;
+  const pending = today.filter(s => ['atrisk','calling','released','offer'].includes(s.st)).length;
   return pending
     ? `<span class="pill p-amber">${pending} not confirmed yet</span><span class="muted">We're following up for you.</span>`
-    : `<span class="pill p-green">All set</span><span class="muted">Everyone today has confirmed.</span>`;
+    : `<span class="pill p-green">All set</span><span class="muted">Today's interviews are confirmed or taken care of.</span>`;
 }
-const WEEK_DAYS = [['Mon','9'],['Tue','10'],['Wed','11'],['Thu','12'],['Fri','13']];
-const TIMES = ['2:00 PM','2:30 PM'];
-function cellOf(d, ti){ return d === 'Wed' ? D.today[ti] : D.week[d][ti]; }
-function cellLabel(s){ return s.refilled ? 'Came · refilled' : STATUS[s.st][0]; }
+function todayRow(s){
+  const pill = `<span class="pill ${STATUS[s.st][1]}">${STATUS[s.st][0]}</span>`;
+  let extra = pill, note = s.note;
+  if (D.confirm === s.k) {
+    note = `Cancel this interview? We'll tell ${first(s.c)}, who gets first pick of your next open times.`;
+    extra = `<button class="mk" data-a="keep">Keep it</button><button class="mk no" data-a="hcancel" data-k="${s.k}">Yes, cancel</button>`;
+  } else if (ACTIVE.includes(s.st) && s.c && !D.running) {
+    extra = pill + `<button class="mk" data-a="askcancel" data-k="${s.k}">Cancel</button>`;
+  } else if (s.st === 'hcancel') {
+    extra = pill + `<button class="mk" data-a="undocancel" data-k="${s.k}">Undo</button>`;
+  } else if (s.st === 'open') {
+    note = 'Candidates can book this now';
+  }
+  return slotRow(Object.assign({}, s, { id: rowId(s.k), note }), extra);
+}
+function todayHtml(){
+  const rows = todaySlots();
+  return rows.length ? rows.map(todayRow).join('') : '<p class="muted" style="padding:8px 0">No interviews today. Change your days in Interview times.</p>';
+}
+/* ---- the schedule (any week) ---- */
+const wd = d => d.toLocaleDateString('en-US', { weekday:'short' });
+const md = d => d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+const tShort = t => t.replace(':00', '').replace(' PM', 'p').replace(' AM', 'a');
+const opensAt = (s, long) => { const o = new Date(at(s.d, s.t) - WINDOW); return long ? `${fmtLong(o)} at ${s.t}` : `${wd(o)} ${tShort(s.t)}`; };
+function weekDays(){
+  const mon = new Date(WEEK0); mon.setDate(mon.getDate() + 7 * D.wk);
+  return DOW.filter(([, i]) => S.av.days.has(i)).map(([, i]) => { const d = new Date(mon); d.setDate(mon.getDate() + (i === 0 ? 6 : i - 1)); return d; });
+}
+function cellText(s){
+  if (s.st === 'notopen') return ['Not open yet', 'Opens ' + wd(new Date(at(s.d, s.t) - WINDOW))];
+  if (s.st === 'open') return ['Open', 'Bookable now'];
+  if (s.st === 'freed') return ['Free time', 'Yours again'];
+  if (!s.c) return ['Open slot', STATUS[s.st][0]];
+  return [first(s.c), s.refilled ? 'Came · refilled' : STATUS[s.st][0]];
+}
 function weekHtml(){
-  let g = '<div></div>' + WEEK_DAYS.map(([d, n]) => `<div class="wh ${d === 'Wed' ? 'today' : ''}">${d} ${n}</div>`).join('');
-  TIMES.forEach((t, ti) => {
-    g += `<div class="wt">${t.replace(':00 PM', 'pm').replace(':30 PM', ':30')}</div>`;
-    WEEK_DAYS.forEach(([d]) => { const s = cellOf(d, ti);
-      g += `<div class="wc c-${s.st} ${d === 'Wed' ? 'today' : ''}" id="w-${d}-${ti}"><b>${PEOPLE[s.c].n.split(' ')[0]}</b><span>${cellLabel(s)}</span></div>`; });
+  const days = weekDays(), times = daySlots(), isT = d => key(d) === key(TODAY);
+  const title = D.wk === 0 ? 'This week' : D.wk === -1 ? 'Last week' : D.wk === 1 ? 'Next week' : 'Week of ' + md(weekDays()[0] || WEEK0);
+  const nav = `<div class="wnav"><button class="icon-btn" data-a="wk" data-v="-1" aria-label="Previous week">${ic('left')}</button>
+    <span class="muted" style="font-size:13px;min-width:92px;text-align:center">${days.length ? md(days[0]) + ' – ' + md(days[days.length - 1]) : ''}</span>
+    <button class="icon-btn" data-a="wk" data-v="1" aria-label="Next week">${ic('right')}</button></div>`;
+  const head = `<div class="panel-h"><div class="row" style="gap:10px"><h3>${title}</h3>${D.wk ? '<button class="link" style="font-size:13px" data-a="wk0">Back to this week</button>' : ''}</div>${nav}</div>`;
+  if (!days.length || !times.length) return head + '<p class="muted">No interview times set yet. Add them in Interview times.</p>';
+  let g = '<div></div>' + days.map(d => `<div class="wh ${isT(d) ? 'today' : ''}">${wd(d)} ${d.getDate()}</div>`).join('');
+  times.forEach(t => {
+    g += `<div class="wt">${tShort(t)}</div>`;
+    days.forEach(d => { const s = getSlot(d, t), [b, sp] = cellText(s);
+      g += `<button class="wc c-${s.st} ${isT(d) ? 'today' : ''} ${D.sel === s.k ? 'sel' : ''}" data-a="sel" data-k="${s.k}"><b>${esc(b)}</b><span>${esc(sp)}</span></button>`; });
   });
-  const list = WEEK_DAYS.map(([d, n]) => `<div class="wday"><div class="dn ${d === 'Wed' ? 'today' : ''}">${d} ${n}</div><div class="ds">${TIMES.map((t, ti) => {
-      const s = cellOf(d, ti), [lab, cls] = STATUS[s.st];
-      return `<div class="wi" id="wi-${d}-${ti}"><span>${t} · ${PEOPLE[s.c].n.split(' ')[0]}</span><span class="pill ${cls}">${s.refilled ? 'Came' : lab}</span></div>`; }).join('')}</div></div>`).join('');
-  return `<div class="week">${g}</div><div class="wlist">${list}</div>
-    <div class="legend"><span><i style="background:var(--green-bg);border:1px solid var(--green)"></i>Confirmed</span><span><i style="background:var(--amber-bg);border:1px solid var(--amber)"></i>Waiting for reply</span><span><i style="background:var(--grey-bg)"></i>Done</span><span><i style="background:repeating-linear-gradient(45deg,#ddd,#ddd 2px,#fff 2px,#fff 4px)"></i>Free time</span></div>`;
+  const list = days.map(d => `<div class="wday"><div class="dn ${isT(d) ? 'today' : ''}">${wd(d)} ${d.getDate()}</div><div class="ds">${times.map(t => {
+      const s = getSlot(d, t), [b] = cellText(s), [lab, cls] = STATUS[s.st];
+      return `<button class="wi ${D.sel === s.k ? 'sel' : ''}" data-a="sel" data-k="${s.k}"><span>${t} · ${esc(b)}</span><span class="pill ${cls}">${lab}</span></button>`; }).join('')}</div></div>`).join('');
+  return head + `<div class="week" style="grid-template-columns:52px repeat(${days.length},minmax(0,1fr))">${g}</div><div class="wlist">${list}</div>${selHtml()}
+    <div class="legend"><span><i style="background:var(--green-bg);border:1px solid var(--green)"></i>Confirmed</span><span><i style="background:var(--amber-bg);border:1px solid var(--amber)"></i>Waiting for reply</span><span><i style="background:var(--accent-2)"></i>Open to book</span><span><i style="border:1px dashed #bbb"></i>Not open yet (48-hour rule)</span><span><i style="background:var(--grey-bg)"></i>Done</span></div>
+    ${D.sel ? '' : '<p class="muted" style="font-size:12.5px;margin-top:8px">Tap any slot to see it or make a change.</p>'}`;
 }
+function selHtml(){
+  const s = D.sel && D.slots[D.sel]; if (!s) return '';
+  const past = at(s.d, s.t) < NOW, [lab, cls] = STATUS[s.st];
+  const who = s.c ? PEOPLE[s.c].n : s.st === 'notopen' ? 'Not open for booking yet' : s.st === 'freed' ? 'Free time' : 'Open slot';
+  let info = '', btns = '';
+  if (D.confirm === s.k) {
+    info = `Cancel this interview? We'll tell ${first(s.c)}, who gets first pick of your next open times.`;
+    btns = `<button class="mk" data-a="keep">Keep it</button><button class="mk no" data-a="hcancel" data-k="${s.k}">Yes, cancel</button>`;
+  } else if (past && s.c && ['tomark','attended','noshow'].includes(s.st)) {
+    if (s.st === 'tomark') { info = 'Did they come to the interview?'; btns = `<button class="mk yes" data-a="mark" data-k="${s.k}" data-v="attended">Came</button><button class="mk no" data-a="mark" data-k="${s.k}" data-v="noshow">Didn't come</button>`; }
+    else { info = s.st === 'noshow' ? 'Paused from booking here for 30 days.' : s.refilled ? 'Took this slot from the waiting list after a cancellation, and came.' : 'Came to the interview.'; btns = `<button class="mk" data-a="unmark" data-k="${s.k}">Undo</button>`; }
+  } else if (ACTIVE.includes(s.st) && s.c && !past) {
+    info = s.note || 'Booked.'; btns = D.running ? '' : `<button class="mk no" data-a="askcancel" data-k="${s.k}">Cancel interview</button>`;
+  } else if (s.st === 'hcancel') {
+    info = s.note; btns = `<button class="mk" data-a="undocancel" data-k="${s.k}">Undo</button>`;
+  } else if (s.st === 'open') {
+    info = past ? 'No one booked this time.' : "Candidates can book this now, because it's within the next 48 hours.";
+  } else if (s.st === 'notopen') {
+    info = `Opens for booking on ${opensAt(s, true)}, 48 hours before. Booking close to the day means fewer people forget.`;
+  } else info = s.note || '';
+  return `<div class="selbar"><div style="min-width:0;flex:1">
+      <div class="muted" style="font-size:12.5px">${fmtLong(s.d)} · ${s.t}</div>
+      <div class="row wrap" style="gap:8px;margin-top:2px"><b>${esc(who)}</b><span class="pill ${cls}">${lab}</span></div>
+      <p class="muted" style="font-size:13px;margin-top:4px">${esc(info)}</p></div>
+    <div class="row wrap">${btns}<button class="icon-btn" data-a="unsel" aria-label="Close">${ic('x')}</button></div></div>`;
+}
+
+/* ---- side cards ---- */
 function markHtml(){
-  const rows = D.week.Tue.map((s, ti) => {
-    const btns = s.st === 'tomark'
-      ? `<button class="mk yes" data-a="mark" data-i="${ti}" data-v="attended">Came</button><button class="mk no" data-a="mark" data-i="${ti}" data-v="noshow">Didn't come</button>` : '';
-    const note = s.st === 'noshow' ? 'Paused from booking here for 30 days' : s.st === 'attended' ? 'Marked as came' : 'Did they come to the interview?';
-    return slotRow({ time: TIMES[ti], c: s.c, st: s.st, note }, btns);
+  const items = Object.values(D.slots).filter(s => s.c && at(s.d, s.t) < NOW && (s.st === 'tomark' || D.marked.has(s.k))).sort((a, b) => at(a.d, a.t) - at(b.d, b.t));
+  const left = items.filter(s => s.st === 'tomark').length;
+  const rows = items.map(s => {
+    const [lab, cls] = STATUS[s.st];
+    const extra = s.st === 'tomark'
+      ? `<button class="mk yes" data-a="mark" data-k="${s.k}" data-v="attended">Came</button><button class="mk no" data-a="mark" data-k="${s.k}" data-v="noshow">Didn't come</button>`
+      : `<span class="pill ${cls}">${lab}</span><button class="mk" data-a="unmark" data-k="${s.k}">Undo</button>`;
+    const note = s.st === 'noshow' ? 'Paused from booking here for 30 days' : s.st === 'attended' ? 'Marked as came' : 'Did they come?';
+    return slotRow({ c: s.c, st: s.st, note, timeLabel: s.t, sub: `${wd(s.d)}, ${md(s.d)}` }, extra);
   }).join('');
-  const done = D.week.Tue.every(s => s.st !== 'tomark');
-  return `<div class="panel-h"><div><h3>Yesterday</h3><p>${done ? 'All marked. Thanks!' : 'Tap one for each. It takes 2 seconds.'}</p></div></div>${rows}`;
+  const sub = left ? `${left} to mark. Tap one for each.` : items.length ? 'All marked. Made a mistake? Tap Undo.' : 'Nothing to mark right now.';
+  return `<div class="panel-h"><div><h3>Did they come?</h3><p>${sub}</p></div></div>${rows}`;
+}
+function reviewHtml(){
+  const rows = D.review.map((r, i) => {
+    const p = PEOPLE[r.c];
+    const extra = r.st ? `<span class="pill ${r.st === 'ok' ? 'p-green' : 'p-grey'}">${r.st === 'ok' ? 'Added to waiting list' : 'Not a fit'}</span><button class="mk" data-a="unreview" data-i="${i}">Undo</button>`
+      : `<button class="mk yes" data-a="review" data-i="${i}" data-v="ok">Add to waiting list</button><button class="mk no" data-a="review" data-i="${i}" data-v="no">Not a fit</button>`;
+    return `<div class="slot" style="grid-template-columns:minmax(0,1fr);grid-template-areas:'who' 'st'"><div class="who"><span class="avatar">${p.i}</span><div style="min-width:0"><b>${p.n}</b><span class="note">${esc(r.why)}</span></div></div><div class="st" style="justify-content:flex-start">${extra}</div></div>`;
+  }).join('');
+  const left = D.review.filter(r => !r.st).length;
+  return `<div class="panel-h"><div><h3>Needs your OK</h3><p>${left ? 'Passed screening with a lower score. You decide, not the AI.' : 'All decided. Thanks!'}</p></div></div>${rows}`;
 }
 function waitHtml(){
-  if (!D.wait.length) return '<p class="muted" style="font-size:13px;padding:8px 0">No one is waiting right now.</p>';
-  return D.wait.map((id, i) => { const p = PEOPLE[id];
-    return `<div class="wl" id="wl-${id}"><span class="avatar">${p.i}</span><div style="min-width:0"><b>${p.n}</b><span class="n">Prefers ${p.pref.toLowerCase()}</span></div>
-      <div>${i === 0 ? '<span class="pill p-green">Next in line</span>' : ''}</div></div>`; }).join('');
+  const rows = [...D.firstPick.map(id => [id, true]), ...D.wait.map(id => [id, false])];
+  if (!rows.length) return '<p class="muted" style="font-size:13px;padding:8px 0">No one is waiting right now.</p>';
+  const firstReg = D.wait[0];
+  return rows.map(([id, fp]) => { const p = PEOPLE[id];
+    const tag = fp ? '<span class="pill p-blue">First pick</span>' : (id === firstReg && !D.firstPick.length ? '<span class="pill p-green">Next in line</span>' : '');
+    const note = fp ? 'You cancelled their interview' : 'Prefers ' + (p.pref || 'any time').toLowerCase();
+    return `<div class="wl" id="wl-${id}"><span class="avatar">${p.i}</span><div style="min-width:0"><b>${p.n}</b><span class="n">${note}</span></div><div>${tag}</div></div>`; }).join('');
 }
+const waitCount = () => `${D.firstPick.length + D.wait.length} people, already screened`;
 function dashboard(){
   return shell('dashboard', `
     <div class="d-head">
-      <div><div class="muted" style="font-size:13px">Wednesday, November 11</div><h1>Hi, Maria</h1><div class="status" id="statusline">${statusLine()}</div></div>
+      <div><div class="muted" style="font-size:13px">Wednesday, November 11 · 9:00 AM</div><h1>Hi, Maria</h1><div class="status" id="statusline">${statusLine()}</div></div>
       <button class="btn btn-ghost btn-sm" data-a="copylink">${ic('link')} Share apply link</button>
     </div>
     <div class="d-grid">
       <div class="stack">
-        <div class="card panel"><div class="panel-h"><h3>Today's interviews</h3></div><div id="today">${D.today.map(s => slotRow(s)).join('')}</div></div>
-        <div class="card panel"><div class="panel-h"><h3>This week</h3><span class="muted" style="font-size:12.5px">Nov 9 – 13</span></div><div id="weekwrap">${weekHtml()}</div></div>
+        <div class="card panel"><div class="panel-h"><h3>Today</h3><span class="muted" style="font-size:13px">Wed, Nov 11</span></div><div id="today">${todayHtml()}</div></div>
+        <div class="card panel" id="weekwrap">${weekHtml()}</div>
       </div>
       <div class="stack">
-        <div class="card panel"><div class="panel-h"><div><h3>Waiting for a slot</h3><p id="wlcnt">${D.wait.length} people, already screened</p></div></div>
+        <div class="card panel"><div class="panel-h"><div><h3>Waiting for a slot</h3><p id="wlcnt">${waitCount()}</p></div></div>
           <div id="wait">${waitHtml()}</div>
-          <p class="muted" style="font-size:12.5px;margin-top:10px">When a slot opens, we offer it to the best fit first. They have 30 minutes to take it.</p></div>
+          <p class="muted" style="font-size:12.5px;margin-top:10px">When a slot opens, we text the next person in line. They have 30 minutes to take it.</p></div>
         <div class="card panel mark" id="markp">${markHtml()}</div>
+        <div class="card panel" id="revp">${reviewHtml()}</div>
       </div>
     </div>`);
 }
 function redraw(flashId){
-  if ($('today')) $('today').innerHTML = D.today.map(s => slotRow(s)).join('');
+  if ($('today')) $('today').innerHTML = todayHtml();
   if ($('statusline')) $('statusline').innerHTML = statusLine();
   if ($('weekwrap')) $('weekwrap').innerHTML = weekHtml();
   if ($('markp')) $('markp').innerHTML = markHtml();
-  let el = flashId && $(flashId);
-  if (el && el.offsetParent === null) el = $(flashId.replace(/^w-/, 'wi-'));
+  if ($('revp')) $('revp').innerHTML = reviewHtml();
+  if ($('wait')) $('wait').innerHTML = waitHtml();
+  if ($('wlcnt')) $('wlcnt').textContent = waitCount();
+  const el = flashId && $(flashId);
   if (el) {
     el.classList.add('flash');
     const r = el.getBoundingClientRect(), top = 120, bottom = innerHeight - 110;
@@ -953,49 +1094,61 @@ function redraw(flashId){
   }
 }
 
-/* ---- demo stories ---- */
+/* ---- demo stories: a candidate cancels ---- */
 const wait = ms => new Promise(r => setTimeout(r, ms));
+function pickToday(i){ const ts = todaySlots(); return ts.length ? ts[Math.min(i, ts.length - 1)] : null; }
+function canPlay(s){
+  if (s && ACTIVE.includes(s.st) && s.c && at(s.d, s.t) > NOW) return true;
+  toast('Press Reset to play this again'); return false;
+}
 async function sim1(){
-  if (D.sim1 || D.running) return; D.running = true;
-  const s = D.today[1];
-  s.st = 'calling'; s.note = "Calling to check if they're coming"; redraw('t2');
-  setBar("1/4 · Jordan didn't reply to yesterday's reminder, so Slotwise calls to check.");
-  await wait(2300);
-  s.st = 'released'; s.note = "Can't come today. Moved to next week."; redraw('t2');
-  setBar("2/4 · Jordan can't come. They keep their screening and get next week's times.");
-  await wait(2300);
-  $('wl-priya')?.classList.add('hl');
-  s.c = 'priya'; s.st = 'offer'; s.note = 'Offered to the best fit on the waiting list'; redraw('t2');
-  setBar('3/4 · Priya is the best fit waiting. Priya gets a text: “2:30 PM opened today. Tap to take it.”');
+  if (D.running) return;
+  const s = pickToday(1); if (!canPlay(s)) return;
+  if (!D.wait.length) { toast('No one is waiting. Press Reset.'); return; }
+  D.running = true; D.confirm = null;
+  const id = rowId(s.k), was = s.c, who = first(was);
+  s.st = 'calling'; s.note = "Calling to check if they're coming"; redraw(id);
+  setBar(`1/4 · ${who} hasn't replied to yesterday's reminder, so Slotwise calls to check.`);
+  await wait(2400);
+  s.st = 'released'; s.note = "Can't come today. Offering this slot to the waiting list…";
+  PEOPLE[was].pref = PEOPLE[was].pref || 'Afternoons · next week';
+  const next = D.wait[0];
+  if (!D.wait.includes(was)) D.wait.push(was);
+  redraw(id);
+  setBar(`2/4 · ${who} can't come. The slot opens up, and ${who} goes back on the waiting list without re-screening.`);
   await wait(2600);
-  s.st = 'confirmed'; s.note = 'Took the slot from the waiting list'; redraw('t2');
-  D.wait = D.wait.filter(x => x !== 'priya');
-  const wl = $('wl-priya'); if (wl) { wl.classList.add('gone'); await wait(350); }
-  if ($('wait')) $('wait').innerHTML = waitHtml();
-  if ($('wlcnt')) $('wlcnt').textContent = D.wait.length + ' people, already screened';
-  setBar("4/4 · Priya took the slot. Maria didn't have to do anything.");
-  D.sim1 = true; D.running = false;
+  const nn = first(next);
+  s.c = next; s.st = 'offer'; s.note = `Waiting for ${nn} to accept (30 minutes)`; redraw(id);
+  $('wl-' + next)?.classList.add('hl');
+  setBar(`3/4 · ${nn} is next in line and gets a text: “${s.t} opened today. Tap to take it.”`);
+  await wait(2800);
+  s.st = 'confirmed'; s.note = 'Took the slot from the waiting list';
+  D.wait = D.wait.filter(x => x !== next); redraw(id);
+  setBar(`4/4 · ${nn} accepted. The slot is full again, and Maria didn't have to do anything.`);
+  D.sim1 = true; D.running = false; redraw();
   await wait(3200); setBar(null);
 }
 async function sim2(){
-  if (D.sim2 || D.running) return; D.running = true;
-  const s = D.week.Fri[1];
-  s.st = 'released'; redraw('w-Fri-1');
-  setBar('1/3 · Ava cancelled Friday 2:30 PM.');
-  await wait(2200);
-  s.st = 'offer'; redraw('w-Fri-1');
-  setBar('2/3 · Offered to the waiting list. No one can make Friday afternoon.');
+  if (D.running) return;
+  const s = pickToday(0); if (!canPlay(s)) return;
+  D.running = true; D.confirm = null;
+  const id = rowId(s.k), who = first(s.c);
+  s.st = 'released'; s.note = 'Replied “3 = cancel” to the reminder. Offering this slot to the waiting list…'; redraw(id);
+  setBar(`1/3 · ${who} replies “3 = cancel” to the reminder. The ${s.t} slot opens up.`);
   await wait(2400);
-  s.st = 'freed'; redraw('w-Fri-1');
-  setBar('3/3 · Two hours before, Maria is told: that half hour is hers again.');
-  D.sim2 = true; D.running = false;
+  s.c = null; s.st = 'offer'; s.note = 'Offered to the waiting list. No one has accepted yet.'; redraw(id);
+  setBar(`2/3 · Slotwise offers ${s.t} to the waiting list, but no one can make it in time.`);
+  await wait(2600);
+  s.st = 'freed'; s.note = 'No one could take it, so we told you 2 hours ahead. This time is yours again.'; redraw(id);
+  setBar(`3/3 · Two hours before, Maria gets a heads-up: ${s.t} is free time now.`);
+  D.sim2 = true; D.running = false; redraw();
   await wait(3200); setBar(null);
 }
 
 /* ================= 7. INTERVIEW TIMES (in the app) ================= */
 function times(){
   return shell('times', `<div style="max-width:680px">
-    <div class="page-h"><h1>Interview times</h1><p>Candidates can book these, up to 2 days ahead.</p></div>
+    <div class="page-h"><h1>Interview times</h1><p>Candidates can book these times up to 48 hours ahead.</p></div>
     ${avForm()}
     <div class="foot-btns" style="justify-content:flex-end"><button class="btn btn-primary" data-a="savetimes">Save changes</button></div></div>`);
 }
@@ -1053,9 +1206,32 @@ document.addEventListener('click', e => {
     },
     print: () => window.print(),
     mark: () => {
-      const s = D.week.Tue[+el.dataset.i]; s.st = v; redraw();
+      const s = D.slots[el.dataset.k]; s.st = v; D.marked.add(s.k); redraw();
       toast(v === 'noshow' ? `${PEOPLE[s.c].n} can't book at this store for 30 days` : `Marked ${PEOPLE[s.c].n} as came`);
     },
+    unmark: () => { const s = D.slots[el.dataset.k]; s.st = 'tomark'; s.refilled = false; D.marked.add(s.k); redraw(); toast('Undone. Mark it again when you are sure.'); },
+    sel: () => { if (D.running) return; D.sel = D.sel === el.dataset.k ? null : el.dataset.k; D.confirm = null; redraw(); },
+    unsel: () => { D.sel = null; D.confirm = null; redraw(); },
+    wk: () => { D.wk += +v; D.sel = null; D.confirm = null; redraw(); },
+    wk0: () => { D.wk = 0; D.sel = null; D.confirm = null; redraw(); },
+    askcancel: () => { D.confirm = el.dataset.k; redraw(); },
+    keep: () => { D.confirm = null; redraw(); },
+    hcancel: () => {
+      const s = D.slots[el.dataset.k]; s.prev = { st: s.st, note: s.note };
+      s.st = 'hcancel'; s.note = `We told ${first(s.c)}. They get first pick of your next open times.`;
+      if (!D.firstPick.includes(s.c)) D.firstPick.unshift(s.c);
+      D.confirm = null; redraw(rowId(s.k)); toast(`Interview cancelled. ${first(s.c)} gets first pick of your next times.`);
+    },
+    undocancel: () => {
+      const s = D.slots[el.dataset.k]; Object.assign(s, s.prev); delete s.prev;
+      D.firstPick = D.firstPick.filter(x => x !== s.c); redraw(rowId(s.k)); toast('Interview is back on');
+    },
+    review: () => {
+      const r = D.review[+el.dataset.i]; r.st = v;
+      if (v === 'ok' && !D.wait.includes(r.c)) D.wait.push(r.c);
+      redraw(); toast(v === 'ok' ? `${PEOPLE[r.c].n} added to the waiting list` : `${PEOPLE[r.c].n} gets a polite "not this time" text`);
+    },
+    unreview: () => { const r = D.review[+el.dataset.i]; r.st = null; D.wait = D.wait.filter(x => x !== r.c); redraw(); },
     watch: () => { go('dashboard'); setTimeout(sim1, 700); },
     sim1: () => sim1(),
     sim2: () => sim2(),

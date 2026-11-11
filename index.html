@@ -260,6 +260,8 @@ footer.foot{max-width:1160px;margin:0 auto;padding:32px 24px 40px;color:var(--mu
 .panel-h{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
 .panel-h h3{font-size:16px}
 .panel-h p{font-size:13px;color:var(--muted);margin-top:2px}
+.mark .slot{grid-template-columns:62px minmax(0,1fr);grid-template-areas:"t who" ". st";padding:12px 2px}
+.mark .slot .st{justify-content:flex-start}
 .mk{height:32px;padding:0 12px;border-radius:9px;border:1px solid var(--line-2);font-weight:600;font-size:13px;background:var(--surface);white-space:nowrap}
 .mk:hover{border-color:var(--ink)}
 .mk.yes:hover{border-color:var(--green);color:var(--green)}
@@ -897,7 +899,7 @@ function weekHtml(){
   });
   const list = WEEK_DAYS.map(([d, n]) => `<div class="wday"><div class="dn ${d === 'Wed' ? 'today' : ''}">${d} ${n}</div><div class="ds">${TIMES.map((t, ti) => {
       const s = cellOf(d, ti), [lab, cls] = STATUS[s.st];
-      return `<div class="wi"><span>${t} · ${PEOPLE[s.c].n.split(' ')[0]}</span><span class="pill ${cls}">${s.refilled ? 'Came' : lab}</span></div>`; }).join('')}</div></div>`).join('');
+      return `<div class="wi" id="wi-${d}-${ti}"><span>${t} · ${PEOPLE[s.c].n.split(' ')[0]}</span><span class="pill ${cls}">${s.refilled ? 'Came' : lab}</span></div>`; }).join('')}</div></div>`).join('');
   return `<div class="week">${g}</div><div class="wlist">${list}</div>
     <div class="legend"><span><i style="background:var(--green-bg);border:1px solid var(--green)"></i>Confirmed</span><span><i style="background:var(--amber-bg);border:1px solid var(--amber)"></i>Waiting for reply</span><span><i style="background:var(--grey-bg)"></i>Done</span><span><i style="background:repeating-linear-gradient(45deg,#ddd,#ddd 2px,#fff 2px,#fff 4px)"></i>Free time</span></div>`;
 }
@@ -926,13 +928,13 @@ function dashboard(){
     <div class="d-grid">
       <div class="stack">
         <div class="card panel"><div class="panel-h"><h3>Today's interviews</h3></div><div id="today">${D.today.map(s => slotRow(s)).join('')}</div></div>
-        <div class="card panel" id="markp">${markHtml()}</div>
         <div class="card panel"><div class="panel-h"><h3>This week</h3><span class="muted" style="font-size:12.5px">Nov 9 – 13</span></div><div id="weekwrap">${weekHtml()}</div></div>
       </div>
       <div class="stack">
         <div class="card panel"><div class="panel-h"><div><h3>Waiting for a slot</h3><p id="wlcnt">${D.wait.length} people, already screened</p></div></div>
           <div id="wait">${waitHtml()}</div>
           <p class="muted" style="font-size:12.5px;margin-top:10px">When a slot opens, we offer it to the best fit first. They have 30 minutes to take it.</p></div>
+        <div class="card panel mark" id="markp">${markHtml()}</div>
       </div>
     </div>`);
 }
@@ -941,7 +943,13 @@ function redraw(flashId){
   if ($('statusline')) $('statusline').innerHTML = statusLine();
   if ($('weekwrap')) $('weekwrap').innerHTML = weekHtml();
   if ($('markp')) $('markp').innerHTML = markHtml();
-  if (flashId && $(flashId)) $(flashId).classList.add('flash');
+  let el = flashId && $(flashId);
+  if (el && el.offsetParent === null) el = $(flashId.replace(/^w-/, 'wi-'));
+  if (el) {
+    el.classList.add('flash');
+    const r = el.getBoundingClientRect(), top = 120, bottom = innerHeight - 110;
+    if (r.top < top || r.bottom > bottom) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
 }
 
 /* ---- demo stories ---- */

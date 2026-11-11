@@ -568,8 +568,8 @@ function renderBar(){
   n.classList.remove('on');
   if (r === 'dashboard') {
     b.innerHTML = `<span class="tagp">Prototype</span><span class="msg"><span class="long">Play what Slotwise does on its own:</span></span>
-      <button class="pri" data-a="sim1" ${D.sim1 ? 'disabled' : ''}>${ic('play')}<span class="long">Someone cancels</span><span class="short">Cancel</span></button>
-      <button data-a="sim2" ${D.sim2 ? 'disabled' : ''}>${ic('play')}<span class="long">No one can take it</span><span class="short">No match</span></button>
+      <button class="pri" data-a="sim1" ${D.sim1 ? 'disabled title="Already played. Press Reset to play again."' : ''}>${ic('play')}<span class="long">Someone cancels</span><span class="short">Cancel</span></button>
+      <button data-a="sim2" ${D.sim2 ? 'disabled title="Already played. Press Reset to play again."' : ''}>${ic('play')}<span class="long">No one can take it</span><span class="short">No match</span></button>
       <button data-a="reset" aria-label="Reset demo">${ic('refresh')}<span class="long">Reset</span></button>`;
   } else {
     b.innerHTML = `<span class="tagp">Prototype</span><span class="msg"><span class="long">Sample data. Nothing is sent to anyone.</span></span>
@@ -801,7 +801,7 @@ function candidatePreview(){
   if (a.cBooked) {
     const [k, t] = a.cSel.split('|');
     body = `<div class="ok"><span class="tk">${ic('check')}</span><b style="font-size:16px">You're booked!</b><div class="muted">${fmtLong(fromKey(k))} at ${t}</div>
-      <button class="btn btn-ghost btn-sm" style="margin-top:8px" data-a="crestart">Try again</button></div>`;
+      <button class="btn btn-ghost btn-sm" style="margin-top:8px" data-a="crestart">Pick another time</button></div>`;
   } else if (!days.length || !slots.length) {
     body = `<p class="muted" style="padding-top:18px">No open times in the next 2 days. Go back and add more days or hours.</p>`;
   } else {
@@ -917,7 +917,7 @@ function waitHtml(){
   if (!D.wait.length) return '<p class="muted" style="font-size:13px;padding:8px 0">No one is waiting right now.</p>';
   return D.wait.map((id, i) => { const p = PEOPLE[id];
     return `<div class="wl" id="wl-${id}"><span class="avatar">${p.i}</span><div style="min-width:0"><b>${p.n}</b><span class="n">Prefers ${p.pref.toLowerCase()}</span></div>
-      <div>${i === 0 ? '<span class="pill p-green">Best fit</span>' : ''}</div></div>`; }).join('');
+      <div>${i === 0 ? '<span class="pill p-green">Next in line</span>' : ''}</div></div>`; }).join('');
 }
 function dashboard(){
   return shell('dashboard', `

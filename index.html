@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Slotwise</title>
-<meta name="description" content="Slotwise: every interview slot, filled wisely. Interview scheduling for high-volume hourly hiring.">
+<title>SlotWise</title>
+<meta name="description" content="SlotWise: every interview slot, filled wisely. Interview scheduling for high-volume hourly hiring.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
 :root{
@@ -57,6 +57,8 @@ p{margin:0}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
 .avatar{width:36px;height:36px;border-radius:50%;background:var(--accent-2);color:var(--accent-ink);display:grid;place-items:center;font-weight:700;font-size:12.5px;flex:none}
 .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;letter-spacing:-.3px;white-space:nowrap}
+.wm{font-family:Sora,Inter,system-ui,sans-serif;font-weight:800;font-size:19px;letter-spacing:-.045em;color:var(--ink)}
+.wm span{color:var(--accent)}
 .logo-mark{width:30px;height:30px;border-radius:9px;background:var(--accent);display:grid;place-items:center;flex:none}
 .logo-mark svg{width:17px;height:17px;stroke:#fff;stroke-width:2.2}
 
@@ -618,7 +620,7 @@ function renderBar(){
 function setBar(msg){ barMsg = msg; renderBar(); }
 
 /* ================= shared bits ================= */
-const logo = (href = '#/landing') => `<a class="logo" href="${href}"><span class="logo-mark">${ic('calcheck')}</span>Slotwise</a>`;
+const logo = (href = '#/landing') => `<a class="logo" href="${href}" aria-label="SlotWise home"><span class="logo-mark">${ic('calcheck')}</span><span class="wm">Slot<span>Wise</span></span></a>`;
 function toast(msg){
   const t = $('toast'); t.innerHTML = ic('check') + `<span>${esc(msg)}</span>`; t.classList.add('on');
   clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('on'), 2800);
@@ -658,7 +660,7 @@ function shell(active, content){
 /* ================= 1. LANDING ================= */
 const HERO_STEPS = [
   { c:'jordan', st:'atrisk',    note:"Hasn't replied yet. We'll call to check.", cap:'Jordan hasn\'t confirmed yet…' },
-  { c:'jordan', st:'calling',   note:'Calling to check if they\'re coming',       cap:'Slotwise calls to check.' },
+  { c:'jordan', st:'calling',   note:'Calling to check if they\'re coming',       cap:'SlotWise calls to check.' },
   { c:'jordan', st:'released',  note:"Can't come today. Offering the slot to the waiting list…", cap:'Jordan can\'t make it.' },
   { c:'priya',  st:'offer',     note:'Waiting for Priya to accept (30 minutes)', cap:'The next person in line gets a text.' },
   { c:'priya',  st:'confirmed', note:'Took the slot from the waiting list',        cap:'Slot filled. Maria didn\'t lift a finger.' },
@@ -689,7 +691,7 @@ function landing(){
     <h2>From job post to a full interview calendar</h2>
     <div class="steps">
       <div class="card step"><div class="num">1</div><h3>Pick the job</h3><p>Choose a role or paste your own description. We write the screening questions.</p></div>
-      <div class="card step"><div class="num">2</div><h3>We screen applicants</h3><p>A 30-second form and a short AI phone call. Only good fits get a slot.</p></div>
+      <div class="card step"><div class="num">2</div><h3>We screen applicants</h3><p>A 30-second form and an AI phone call. Only good fits get a slot.</p></div>
       <div class="card step"><div class="num">3</div><h3>We confirm every interview</h3><p>A text the day before, and a call if they don't reply. Rescheduling takes one tap.</p></div>
       <div class="card step"><div class="num">4</div><h3>We fill cancelled slots</h3><p>Someone cancels? The best person on the waiting list gets it. If no one can, you get your time back.</p></div>
     </div>
@@ -698,7 +700,7 @@ function landing(){
     <div><h2>Ready to fill your interview calendar?</h2><p style="opacity:.7;margin-top:6px">Pick a job, set your times, and we handle the rest.</p></div>
     <a class="btn btn-primary" href="#/job">Get started ${ic('arrow')}</a>
   </div>
-  <footer class="foot">Slotwise · prototype · names and data are samples</footer>`;
+  <footer class="foot">SlotWise · prototype · names and data are samples</footer>`;
 }
 AFTER.landing = () => {
   let i = 0;
@@ -872,7 +874,7 @@ function candidatePreview(){
     </div>
     <div>
       <div class="phone" aria-label="Text messages the candidate receives">
-        <div class="phone-h"><b>Slotwise</b>Texts the candidate gets</div>
+        <div class="phone-h"><b>SlotWise</b>Texts the candidate gets</div>
         <div class="bub">You're booked for ${day}, ${bt} at Store #214. Ask for Maria at the counter.<span class="map">${ic('pin', 'style="width:12px;height:12px;vertical-align:-2px"')} 1200 Main St · Open map</span><small>Right after booking</small></div>
         <div class="bub">Reminder: your interview is tomorrow at ${bt}. Reply 1 = I'm coming, 2 = reschedule, 3 = cancel.<small>The day before</small></div>
         <div class="bub me">1<small>Candidate</small></div>
@@ -1108,7 +1110,7 @@ async function sim1(){
   D.running = true; D.confirm = null;
   const id = rowId(s.k), was = s.c, who = first(was);
   s.st = 'calling'; s.note = "Calling to check if they're coming"; redraw(id);
-  setBar(`1/4 · ${who} hasn't replied to yesterday's reminder, so Slotwise calls to check.`);
+  setBar(`1/4 · ${who} hasn't replied to yesterday's reminder, so SlotWise calls to check.`);
   await wait(2400);
   s.st = 'released'; s.note = "Can't come today. Offering this slot to the waiting list…";
   PEOPLE[was].pref = PEOPLE[was].pref || 'Afternoons · next week';
@@ -1137,7 +1139,7 @@ async function sim2(){
   setBar(`1/3 · ${who} replies “3 = cancel” to the reminder. The ${s.t} slot opens up.`);
   await wait(2400);
   s.c = null; s.st = 'offer'; s.note = 'Offered to the waiting list. No one has accepted yet.'; redraw(id);
-  setBar(`2/3 · Slotwise offers ${s.t} to the waiting list, but no one can make it in time.`);
+  setBar(`2/3 · SlotWise offers ${s.t} to the waiting list, but no one can make it in time.`);
   await wait(2600);
   s.st = 'freed'; s.note = 'No one could take it, so we told you 2 hours ahead. This time is yours again.'; redraw(id);
   setBar(`3/3 · Two hours before, Maria gets a heads-up: ${s.t} is free time now.`);
